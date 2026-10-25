@@ -65,3 +65,10 @@ iverilog -g2012 -DFUNCTIONAL -DUNIT_DELAY=#1 -o gls \
   tb/tb_mult.v $CELLS/primitives.v $CELLS/sky130_fd_sc_hd.v synth/mult_array_netlist.v
 vvp gls                      # PASS: 256 vectors checked, 0 errors
 ```
+
+## Part C: Static timing analysis
+
+```bash
+sta sta/sta.tcl              # T = 10 ns (default) -> worst slack max 7.40
+                             
+T=2.60 sta sta/sta.tcl       # T = Tmin -> worst slack max 0.00 
