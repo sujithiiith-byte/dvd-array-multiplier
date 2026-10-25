@@ -34,3 +34,22 @@ echo $PDK_ROOT $PDK
 >> /foss/pdks sky130A
 ```
 
+
+## Part A: RTL design and verification
+
+Inside the container, from `/foss/designs`:
+
+```bash
+iverilog -g2012 -o sim tb/tb_mult.v rtl/full_adder.v rtl/mult_array.v
+vvp sim                  # PASS: 256 vectors checked, 0 errors
+gtkwave mult.vcd         # waveform (also viewed in Vivado)
+```
+
+Error test: in `rtl/full_adder.v` changed `assign sum = a^b^cin;` to `assign sum = a^b;`, then:
+
+```bash
+iverilog -g2012 -o sim tb/tb_mult.v rtl/full_adder.v rtl/mult_array.v
+vvp sim                  # FAIL: 256 vectors checked, 95 errors
+```
+
+Undid the change and re-ran: PASS.
