@@ -16,23 +16,23 @@ All tools run inside the IIC-OSIC-TOOLS Docker image on Ubuntu 22.04 (WSL2).
 ```bash
 # On the host (one time)
 docker pull hpretl/iic-osic-tools:latest
-git clone --depth 1 https://github.com/iic-jku/IIC-OSIC-TOOLS.git ~/main_workspace/eda/IIC-OSIC-TOOLS
-cd ~/main_workspace/eda/IIC-OSIC-TOOLS
-DESIGNS=$HOME/main_workspace/dvd_assignment ./start_x.sh  #mount my work directory to /foss/designs
 
-# Later sessions
-docker start iic-osic-tools_xserver_uid_1000                  #To start docker container
-docker exec -it iic-osic-tools_xserver_uid_1000 bash -l       #To open container's bash shell 
+# Start a tools shell (repo mounted at /foss/designs, SKY130 selected, GUI apps via WSLg)
+docker run --rm -it --name eda_shell --user 1000:1000 -e PDK=sky130A \
+  -e DISPLAY=$DISPLAY -e WAYLAND_DISPLAY=$WAYLAND_DISPLAY \
+  -v /tmp/.X11-unix:/tmp/.X11-unix -v /mnt/wslg:/mnt/wslg \
+  -v $HOME/main_workspace/dvd_assignment:/foss/designs -w /foss/designs \
+  hpretl/iic-osic-tools:latest -s bash
+
+# Inside the container: tool check
+iverilog -V | head -1
+yosys -V
+sta -version
+echo $PDK_ROOT $PDK      # -> /foss/pdks sky130A
 ```
 
-`PDK setup`
-```bash
-echo $PDK_ROOT $PDK
->> /foss/pdks ihp-sg13g2
-sak-pdk sky130A
-echo $PDK_ROOT $PDK
->> /foss/pdks sky130A
-```
+The image's default PDK is `ihp-sg13g2`; `-e PDK=sky130A` selects SKY130
+(inside a running shell, `sak-pdk sky130A` does the same).
 
 
 ## Part A: RTL design and verification
@@ -53,3 +53,15 @@ vvp sim                  # FAIL: 256 vectors checked, 95 errors
 ```
 
 Undid the change and re-ran: PASS.
+
+## Part B: Logic synthesis
+
+```bash
+yosys -c synth/synth.tcl    
+
+# Gate-level simulation of the netlist with the SKY130 cell models
+CELLS=$PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/verilog
+iverilog -g2012 -DFUNCTIONAL -DUNIT_DELAY=#1 -o gls \
+  tb/tb_mult.v $CELLS/primitives.v $CELLS/sky130_fd_sc_hd.v synth/mult_array_netlist.v
+vvp gls                      # PASS: 256 vectors checked, 0 errors
+```
